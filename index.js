@@ -437,7 +437,6 @@ app.use("/connect", connectRouter);
 
 let PORT = 9000
 
-app.listen(PORT, () => {
-
+app.listen(process.env.PORT || PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
