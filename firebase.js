@@ -18,6 +18,7 @@ const findUserByEmail = async (email) => {
     return snapshot.docs.map((doc) => doc.data())[0];
 }
 module.exports = {
-    findUserByEmail,
-    db
-}
+  findUserByEmail,
+  db,
+  admin,
+};
