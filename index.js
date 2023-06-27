@@ -1,8 +1,10 @@
 require('dotenv').config()
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY, {
+  maxNetworkRetries: 2,
+});
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
 const connectRouter = require("./router/connect");
 const { getSubscriptionInfo } = require("./stripe");
 const { findUserByEmail, db, admin } = require("./firebase");
@@ -13,196 +15,16 @@ const {
   importInvoiceToDatabase,
   getNextMonthFirstDayTimestamp,
 } = require("./utils/index");
+const handleSubscriptionCreate = require("./controller/subscription/handleSubscriptionCreate");
+const handleSubscriptionUpdate = require("./controller/subscription/handleSubscriptionUpdate");
+const webhookHandler = require("./webhook/webhookHandler");
 
 const app = express();
 app.use(cors());
 let removeBrandingPriceId = "price_1N53z2G6ekPTMWCwGfVS7xDn";
 let additionalMemberPriceId = "price_1NH7fNG6ekPTMWCwi4CIbCh5";
 
-const endpointSecret =
-  "whsec_4ff760b719b6882a9ee21ee8077eb2abd4facc836f96a09c119f5c72ff7123ed";
-app.post(
-  "/webhook",
-  express.raw({ type: "application/json" }),
-  async (request, response) => {
-    const sig = request.headers["stripe-signature"];
-
-    let event;
-
-    try {
-      event = stripe.webhooks.constructEvent(request.body, sig, endpointSecret);
-    } catch (err) {
-      response.status(400).send(`Webhook Error: ${err.message}`);
-      return;
-    }
-
-    switch (event.type) {
-      case "payment_intent.succeeded":
-        const paymentIntent = event.data.object;
-        const custId = paymentIntent.customer;
-        const paymentMethodId = paymentIntent.payment_method;
-        const invoiceId = paymentIntent.invoice;
-
-        // Retrieve the invoice to get the associated subscription ID and metadata
-        const inv = await stripe.invoices.retrieve(invoiceId, {
-          expand: ["subscription"],
-        });
-
-        if (inv && inv.subscription) {
-          const subscription = inv.subscription;
-          const subscriptionMetadata = subscription.metadata;
-
-          // Check if the payment is for a subscription and has the necessary metadata
-          if (
-            subscriptionMetadata &&
-            subscriptionMetadata.is_subscription === "true" &&
-            subscriptionMetadata.subscription_id
-          ) {
-            // Verify that the subscription is in an active state and matches the customer
-            if (
-              subscription.status === "active" &&
-              subscription.customer === custId
-            ) {
-              // Check if the customer has a default payment method already set
-              const customer = await stripe.customers.retrieve(custId);
-              const hasDefaultPaymentMethod =
-                !!customer.invoice_settings.default_payment_method;
-
-              if (!hasDefaultPaymentMethod) {
-                // Set the payment method as the default for the customer
-                await stripe.customers.update(custId, {
-                  invoice_settings: {
-                    default_payment_method: paymentMethodId,
-                  },
-                });
-              }
-            }
-          }
-        }
-        break;
-      case "checkout.session.completed":
-        const session = event.data.object;
-
-        // Here's where you access the metadata
-        const metadata = session.metadata;
-        const { subscriptionId, subscriptionStatus, customerId } =
-          await getSubscriptionInfo(event);
-
-        await db.collection("portals").doc(metadata.portalId).update({
-          subscriptionId,
-          subscriptionStatus,
-          customerId,
-        });
-
-        // Payment is successful and the subscription is created.
-        // You should provision the subscription and save the customer ID to your database.
-        break;
-      case "customer.subscription.updated":
-        const updatedSubscription = event.data.object;
-        const portalId = updatedSubscription.metadata.portalId; // Assuming you have a metadata field named 'portalId'
-
-        if (updatedSubscription.cancel_at_period_end) {
-          // This is a subscription that is set to end (likely a downgrade)
-          // Find portal doc in Firebase and update
-          let portalRef = db.collection("portals").doc(portalId);
-          let updateSingle = await portalRef.update({
-            "subscriptions.current.subscriptionEnd":
-              updatedSubscription.current_period_end,
-          });
-        } else if (updatedSubscription.status === "active") {
-          // This is an active subscription (likely an upgrade)
-          // Find portal doc in Firebase and update
-          let portalRef = db.collection("portals").doc(portalId);
-          let updateSingle = await portalRef.update({
-            subscriptionType: "paid",
-            "subscriptions.current.subscriptionId": updatedSubscription.id,
-            "subscriptions.current.subscriptionStatus": "active",
-            "subscriptions.current.subscriptionEnd":
-              updatedSubscription.current_period_end,
-            "subscriptions.current.priceId":
-              updatedSubscription.items.data[0].price.id,
-            "subscriptions.future": admin.firestore.FieldValue.delete(),
-          });
-        }
-        const subscription = event.data.object;
-        // console.log the price id of subscribtion
-        await db.doc(`portals/${subscription.metadata.portalId}`).update({
-          subscriptionStatus: subscription.status,
-          subscriptionId: subscription.id,
-          isExpiryCount: false,
-          priceId: subscription.items.data[0].price.id,
-        });
-
-        break;
-      case "invoice.paid":
-        // Continue to provision the subscription as payments continue to be made.
-        // Store the status in your database and check when a user accesses your service.
-        // This approach helps you avoid hitting rate limits.
-
-        console.log(event.data.object.lines.data);
-
-        break;
-      case "charge.succeeded":
-        break;
-
-      case "invoice.payment_failed":
-        // The payment failed or the customer does not have a valid payment method.
-        // The subscription becomes past_due. Notify your customer and send them to the
-        // customer portal to update their payment information.
-        break;
-      case "invoice.finalized":
-        // The payment failed or the customer does not have a valid payment method.
-        // The subscription becomes past_due. Notify your customer and send them to the
-        // customer portal to update their payment information.
-        const invoice = event.data.object;
-        // access metadata
-        const meta = invoice.metadata;
-        if (meta && meta.isFromApp && meta.isFromApp === "true") {
-          /* hosted_invoice_url */
-        } else {
-          const customer = await findUserByCustomerId(invoice.customer);
-          if (customer) {
-            const portal = await findPortalByURL(customer.portalURL);
-            if (portal && portal.settings.autoImport) {
-              await importInvoiceToDatabase(invoice, customer);
-            } else {
-              console.log("Portal not found or auto import is disabled");
-            }
-          }
-        }
-
-        break;
-      case "customer.subscription.created":
-        const createdSubscription = event.data.object;
-        const pid = createdSubscription.metadata.portalId; // Assuming you have a metadata field named 'portalId'
-
-        if (createdSubscription.status === "trialing") {
-          // This is the new subscription set to start when the old one ends (likely a downgrade)
-          // Find portal doc in Firebase and update
-          let portalRef = db.collection("portals").doc(pid);
-          portalRef
-            .update({
-              "subscriptions.future.subscriptionId": createdSubscription.id,
-              "subscriptions.future.subscriptionStart":
-                createdSubscription.current_period_end,
-
-              "subscriptions.future.priceId":
-                createdSubscription.items.data[0].price.id,
-            })
-            .catch((error) => {
-              console.error("Error updating document: ", error);
-            });
-        }
-
-      default:
-      // Unhandled event type
-    }
-
-    // Return a 200 response to acknowledge receipt of the event
-    response.send();
-  }
-);
-
+app.use("/webhook", webhookHandler);
 app.use(bodyParser.json());
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
@@ -223,120 +45,141 @@ app.post("/create-customer", async (req, res) => {
   }
 });
 
-app.post("/create-subscription", async (req, res) => {
-  const customerId = req.body.customerId;
-  const priceId = req.body.priceId;
-  const portalId = req.body.portalId;
-  uid = req.body.uid;
+app.post("/create-subscription", handleSubscriptionCreate);
+
+app.post("/update-subscription", handleSubscriptionUpdate);
+
+app.get("/create-billing-portal-session/:customerId", async (req, res) => {
+  const customerId = req.params.customerId;
+  console.log({ customerId });
 
   try {
-    // Create the subscription. Note we're expanding the Subscription's
-    // latest invoice and that invoice's payment_intent
-    // so we can pass it to the front end to confirm the payment
-    let items = [
-      {
-        price: priceId,
-      },
-    ];
-
-    const subscription = await stripe.subscriptions.create({
+    const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      items: items,
-      payment_behavior: "default_incomplete",
-      payment_settings: { save_default_payment_method: "on_subscription" },
-      expand: ["latest_invoice.payment_intent"],
-      metadata: {
-        portalId,
-        uid,
-        is_subscription: "true",
-        customer_id: customerId, // Added customer_id in metadata
-        first_payment_processed: "false", // Added flag
-      },
-      billing_cycle_anchor: getNextMonthFirstDayTimestamp(),
-      proration_behavior: "create_prorations",
-    });
-    // Update the subscription to include its own ID in the metadata
-    await stripe.subscriptions.update(subscription.id, {
-      metadata: {
-        ...subscription.metadata,
-        subscription_id: subscription.id,
+      return_url: "https://example.com/account/overview",
+      flow_data: {
+        type: "payment_method_update",
       },
     });
 
-    res.send({
-      clientSecret: subscription.latest_invoice.payment_intent.client_secret,
-    });
+    res.json({ url: session.url });
   } catch (error) {
-    return res.status(400).send({ error: { message: error.message } });
+    console.error("Error creating Billing Portal session:", error);
+    res
+      .status(500)
+      .send("An error occurred while creating the Billing Portal session.");
   }
 });
-
-app.post("/update-subscription", async (req, res) => {
-  const subscriptionId = req.body.subscriptionId; // user's current subscription id
-  const newPriceId = req.body.priceId; // new pricing plan id
-  const isDowngrade = req.body.isDowngrade; // boolean
-  const portalId = req.body.portalId;
-  const uid = req.body.uid;
+app.get("/checkDefaultPaymentMethod/:customerId", async (req, res) => {
+  const customerId = req.params.customerId;
 
   try {
-    if (isDowngrade) {
-      // If the user is downgrading, we want to cancel their current subscription
-      // at the end of the billing period
-      await stripe.subscriptions.update(subscriptionId, {
-        cancel_at_period_end: true,
-      });
+    const customer = await stripe.customers.retrieve(customerId);
 
-      // Then, schedule a new subscription to start when the old one ends
-      const currentSubscription = await stripe.subscriptions.retrieve(
-        subscriptionId
-      );
-      const futureStart = currentSubscription.current_period_end;
-
-      const subscription = await stripe.subscriptions.create({
-        customer: currentSubscription.customer,
-        items: [{ price: newPriceId }],
-        trial_end: futureStart,
-        metadata: {
-          portalId,
-          uid,
-        },
-      });
-
-      return res.send({
-        message: "Subscription updated successfully",
-        subscription: subscription,
-      });
+    if (
+      customer.invoice_settings &&
+      customer.invoice_settings.default_payment_method
+    ) {
+      res.json({ hasDefaultPaymentMethod: true });
+    } else {
+      res.json({ hasDefaultPaymentMethod: false });
     }
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to check default payment method" });
+  }
+});
+app.post("/payment-method", async (req, res) => {
+  const { customerId } = req.body;
 
-    // Get the id of the item in the subscription we want to modify
-    const subscriptionItemId = subscription.items.data[0].id;
+  try {
+    // Retrieve customer data from Stripe
+    const customer = await stripe.customers.retrieve(customerId);
 
-    // Update the subscription to use the new price
-    const updatedSubscription = await stripe.subscriptions.update(
-      subscription.id,
-      {
-        cancel_at_period_end: false,
-        proration_behavior: "create_prorations",
-        items: [
-          {
-            id: subscriptionItemId,
-            price: newPriceId,
-          },
-        ],
-      }
+    // Get the customer's default payment method
+    const defaultPaymentMethodId =
+      customer.invoice_settings.default_payment_method;
+
+    // Retrieve payment method data from Stripe
+    const paymentMethod = await stripe.paymentMethods.retrieve(
+      defaultPaymentMethodId
     );
 
-    res.send({
-      message: "Subscription updated successfully",
-      subscription: updatedSubscription,
-    });
+    // Extract the relevant payment method details
+    const cardType = paymentMethod.card.brand;
+    const last4Digits = paymentMethod.card.last4;
+
+    // Send the payment method data as the API response
+    res.json({ cardType, last4Digits });
   } catch (error) {
-    console.log(error);
-    return res.status(400).send({ error: { message: error.message } });
+    console.error(
+      "Error retrieving customer or payment method:",
+      error.message
+    );
+    res
+      .status(500)
+      .json({ error: "Failed to retrieve customer or payment method" });
   }
 });
 
+app.post("/team/subscription", async (req, res) => {
+  const { totalPaidTeamMember, sId } = req.body;
+
+  console.log({
+    totalPaidTeamMember,
+    sId,
+  });
+
+  try {
+    const subscriptionItem = await stripe.subscriptionItems.update(sId, {
+      quantity: totalPaidTeamMember,
+    });
+    res.json({
+      data: {
+        message: "Subscription quantity updated successfully",
+        subscriptionItem,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Error updating the subscription quantity" });
+  }
+});
+
+app.put("/subscriptions/items", async (req, res) => {
+  const { itemId, subscriptionId, portalId } = req.body;
+
+  try {
+    // get the subscription object
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    // update the items
+    await stripe.subscriptionItems.update(itemId, {
+      proration_behavior: "none",
+      quantity: 0,
+    });
+
+    // update the firebase
+
+    const portalSnapshot = await db.doc(`portals/${portalId}`).get();
+    const portalData = portalSnapshot.data();
+
+    // Update the 'removeBranding' property with the 'will_expire' field
+    const updatedRemoveBranding = {
+      ...portalData.addOnSubscription.items.removeBranding,
+      will_expire: subscription.current_period_end,
+    };
+
+    // Update the portal document with the modified 'removeBranding' property
+    await db.doc(`portals/${portalId}`).update({
+      "addOnSubscription.items.removeBranding": updatedRemoveBranding,
+    });
+    const updated = await stripe.subscriptions.retrieve(subscriptionId);
+
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 app.post("/createAddOnSubscription", async (req, res) => {
   const { portalId, removeBranding, numberOfTeamMembers } = req.body;
 
@@ -355,78 +198,103 @@ app.post("/createAddOnSubscription", async (req, res) => {
   if (removeBranding) {
     items.push({ price: removeBrandingPriceId }); // Replace with your actual Price ID
   }
+  const customer = await stripe.customers.retrieve(portalData.customerId);
+  const hasDefaultPaymentMethod =
+    customer.invoice_settings &&
+    customer.invoice_settings.default_payment_method;
+  // we can check the subscription status and all the thing than add a new item with ids
 
-  if (numberOfTeamMembers > 0) {
-    items.push({
-      price: additionalMemberPriceId,
-      quantity: numberOfTeamMembers,
-    }); // Replace with your actual Price ID
-  }
+  if (
+    portalData.addOnSubscription &&
+    portalData.addOnSubscription.subscriptionId
+  ) {
+    const subscription = await stripe.subscriptions.retrieve(
+      portalData.addOnSubscription.subscriptionId
+    );
 
-  // Create the add-on subscription in Stripe
-  const addOnSubscription = await stripe.subscriptions.create({
-    customer: portalData.customerId,
-    items: items,
-    metadata: {
-      type: "add-on",
-      portalId: portalId,
-    },
-  });
-
-  // Update the portal document in Firestore with the new add-on subscription details
-  let updatedItems = {};
-
-  for (let item of addOnSubscription.items.data) {
-    if (item.price.id === removeBrandingPriceId) {
-      updatedItems["removeBranding"] = { itemId: item.id, active: true };
-    } else if (item.price.id === additionalMemberPriceId) {
-      updatedItems["additionalTeamMembers"] = {
-        itemId: item.id,
-        quantity: item.quantity,
-      };
-    }
-  }
-
-  await db.collection("portals").doc(portalId).update({
-    "addOnSubscription.subscriptionId": addOnSubscription.id,
-    "addOnSubscription.subscriptionStatus": addOnSubscription.status,
-    "addOnSubscription.items": updatedItems,
-  });
-
-  res.status(200).json({ message: "Add-on subscription created successfully" });
-});
-
-app.post("/create-subscription-session", async (req, res) => {
-  const { priceId, email, uid, portalId } = req.body;
-
-  const session = await stripe.checkout.sessions.create({
-    customer_email: email,
-    mode: "subscription",
-    line_items: [
-      {
-        price: priceId,
+    if (subscription.status === "active") {
+      const subscriptionItem = await stripe.subscriptionItems.create({
+        subscription: subscription.id,
+        price: removeBrandingPriceId,
         quantity: 1,
-      },
-    ],
-
-    success_url: `http://localhost:3000/success`,
-    cancel_url: "http://localhost:3000/cancel",
-    metadata: {
-      portalId: portalId,
-      user_id: uid,
-      // Add more custom fields here
-    },
-    subscription_data: {
-      trial_settings: {
-        end_behavior: {
-          missing_payment_method: "cancel",
+      });
+      console.log({ subscriptionItem });
+      res.send({
+        data: {
+          message: "Subscription created successfully",
         },
-      },
-      trial_period_days: 30,
-    },
-  });
-  res.json({ session });
+      });
+    } else {
+      console.log(
+        "Somecription that on file in database seem to be not active! Maybe cancelled or payment issues"
+      );
+    }
+
+    return;
+  }
+
+  try {
+    // Create the add-on subscription in Stripe
+    if (hasDefaultPaymentMethod) {
+      const subs = await stripe.subscriptions.create({
+        customer: portalData.customerId,
+        items: items,
+        payment_settings: {},
+        metadata: {
+          type: "add-on",
+          portalId: portalId,
+          is_subscription: "true",
+        },
+        billing_cycle_anchor: getNextMonthFirstDayTimestamp(),
+        proration_behavior: "create_prorations",
+      });
+      await stripe.subscriptions.update(subs.id, {
+        metadata: {
+          ...subs.metadata,
+          subscription_id: subs.id,
+        },
+      });
+
+      res.send({
+        data: {
+          message: "Subscription created successfully",
+        },
+      });
+    } else {
+      const addOnSubscription = await stripe.subscriptions.create({
+        customer: portalData.customerId,
+        items: items,
+        payment_behavior: "default_incomplete",
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card"],
+        },
+        expand: ["latest_invoice.payment_intent"],
+        metadata: {
+          type: "add-on",
+          portalId: portalId,
+          is_subscription: "true",
+        },
+        billing_cycle_anchor: getNextMonthFirstDayTimestamp(),
+        proration_behavior: "create_prorations",
+      });
+      await stripe.subscriptions.update(addOnSubscription.id, {
+        metadata: {
+          ...addOnSubscription.metadata,
+          subscription_id: addOnSubscription.id,
+        },
+      });
+
+      res.send({
+        clientSecret:
+          addOnSubscription.latest_invoice.payment_intent.client_secret,
+      });
+    }
+  } catch (err) {
+    console.log(err);
+  }
 });
+
 
 app.use("/connect", connectRouter);
 

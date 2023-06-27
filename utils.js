@@ -23,8 +23,14 @@ const formateLineItemsForDB = (lineItems) => {
     };
   });
 };
+
+function errorHandler(err, res) {
+  console.error(err);
+  res.status(400).send(`Webhook Error: ${err.message}`);
+}
 module.exports = {
   formateLineItemsForDB,
+  errorHandler,
 };
 
 exports.formateLineItems = formateLineItems;

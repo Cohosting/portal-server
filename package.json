@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "pm2 start index.js --watch",
     "start:dev": "nodemon index.js"
   },
   "author": "Himel",
@@ -16,5 +16,8 @@
     "express": "^4.18.2",
     "firebase-admin": "^11.8.0",
     "stripe": "^12.4.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.43.0"
   }
 }

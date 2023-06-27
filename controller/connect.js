@@ -118,12 +118,14 @@ const handleCreateConnectInvoice = async (req, res) => {
     let promise = [];
 
     line_items.forEach(async (item) => {
+      console.log({ item });
       promise.push(
         createInvoiceItem(
           invoiceDraft.id,
           customerId,
           item.unit_amount,
           item.description,
+          Number(item.quantity),
           stripeConnectAccountId
         )
       );

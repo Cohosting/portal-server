@@ -7,15 +7,20 @@ const createInvoiceItem = async (
   customerId,
   amount,
   description,
+  quantity,
   stripeConnectAccountId
 ) => {
+  console.log({
+    quantity,
+  });
+
   const invoiceItem = await stripe.invoiceItems.create(
     {
       invoice: invoiceId,
       customer: customerId,
-      amount,
-      currency: "usd",
       description,
+      quantity,
+      unit_amount: amount,
     },
     {
       stripeAccount: stripeConnectAccountId,
@@ -25,20 +30,40 @@ const createInvoiceItem = async (
 };
 
 const findUserByCustomerId = async (customerId) => {
-  const snapshot = await db
-    .collection("portalMembers")
-    .where("customerId", "==", customerId)
-    .get();
-  return snapshot.docs.map((doc) => doc.data())[0];
-};
-const findPortalByURL = async (url) => {
-  const snapshot = await db
-    .collection("portals")
-    .where("portalURL", "==", url)
-    .get();
-  return snapshot.docs.map((doc) => doc.data())[0];
+  try {
+    const snapshot = await db
+      .collection("portalMembers")
+      .where("customerId", "==", customerId)
+      .limit(1)
+      .get();
+    const result = snapshot.docs.map((doc) => doc.data())[0];
+    if (!result) {
+      console.log(`No user found with customerId: ${customerId}`);
+    }
+    return result;
+  } catch (error) {
+    console.error(`Error finding user by customerId: ${error.message}`);
+    throw error;
+  }
 };
 
+const findPortalByURL = async (url) => {
+  try {
+    const snapshot = await db
+      .collection("portals")
+      .where("portalURL", "==", url)
+      .limit(1)
+      .get();
+    const result = snapshot.docs.map((doc) => doc.data())[0];
+    if (!result) {
+      console.log(`No portal found with URL: ${url}`);
+    }
+    return result;
+  } catch (error) {
+    console.error(`Error finding portal by URL: ${error.message}`);
+    throw error;
+  }
+};
 const importInvoiceToDatabase = async (invoice, customer) => {
   const lineItems = formateLineItemsForDB(invoice.lines.data);
 
@@ -88,6 +113,22 @@ function getNextMonthFirstDayTimestamp() {
   const unixTimestamp = Math.floor(firstDayOfNextMonth.getTime() / 1000);
   return unixTimestamp;
 }
+const getPortalData = async (portalId) => {
+  try {
+    const portalRef = db.collection("portals").doc(portalId);
+    const portalDoc = await portalRef.get();
+
+    if (!portalDoc.exists) {
+      console.log(`No portal document found with id ${portalId}`);
+      return null;
+    }
+
+    return portalDoc;
+  } catch (error) {
+    console.error(`Failed to get portal data for portalId ${portalId}`, error);
+    throw error;
+  }
+};
 
 module.exports = {
   createInvoiceItem,
@@ -95,4 +136,5 @@ module.exports = {
   findPortalByURL,
   importInvoiceToDatabase,
   getNextMonthFirstDayTimestamp,
+  getPortalData,
 };
