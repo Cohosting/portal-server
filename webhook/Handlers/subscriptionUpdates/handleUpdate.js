@@ -49,13 +49,18 @@ const handleUpdate = async (event) => {
           data.customerId,
           portalId
         );
-        handleAddOnSubscriptionUpdate(newAddOn, portalId);
+        await handleAddOnSubscriptionUpdate(newAddOn, portalId);
       }
+      console.log({
+        subscriptionUpdated: updatedSubscription,
+        cancel_at_period_end: updatedSubscription.cancel_at_period_end,
+      })
 
       // Process the subscription update based on its status
       if (updatedSubscription.cancel_at_period_end) {
         await handleSubscriptionEnd(updatedSubscription, portalId);
       } else if (updatedSubscription.status === "active") {
+        console.log('active sub getting updated')
         await handleActiveSubscription(updatedSubscription, portalId);
       }
     }

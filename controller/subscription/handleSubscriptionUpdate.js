@@ -3,17 +3,20 @@ const { stripe } = require("../../services/stripeService");
 const handleSubscriptionUpdate = async (req, res) => {
   const {
     subscriptionId,
+    addOnSubscriptionId, 
     priceId: newPriceId,
     isDowngrade,
     portalId,
     uid,
   } = req.body;
-
+  console.log({
+    subscriptionId, newPriceId, isDowngrade, addOnSubscriptionId
+  })
   // validate request body
-  if (!subscriptionId || !newPriceId || isDowngrade === undefined) {
+  if (!subscriptionId || !newPriceId || isDowngrade === undefined || !addOnSubscriptionId) {
+    console.log('not valid data')
     return res.status(400).json({ error: "Invalid request parameters" });
   }
-
   try {
     let subscription;
     try {
@@ -38,7 +41,7 @@ const handleSubscriptionUpdate = async (req, res) => {
           customer: subscription.customer,
           items: [{ price: newPriceId }],
           trial_end: futureStart,
-          metadata: { portalId, uid },
+          metadata: { portalId, uid, isFutureSubscription: "true" },
         });
       } catch (error) {
         console.error(
@@ -59,6 +62,18 @@ const handleSubscriptionUpdate = async (req, res) => {
           `Failed to cancel old subscription after downgrade: ${subscriptionId}`,
           error
         );
+
+        /*         // update metadata for add-on
+                try {
+                  await stripe.subscriptions.update(addOnSubscriptionId, {
+                    metadata: { teamItemShouldRemoved: "true" },
+                  })
+        
+                } catch (err) {
+                  console.log(err)
+        
+        
+                } */
         return res
           .status(500)
           .send({ error: { message: "Failed to cancel old subscription" } });

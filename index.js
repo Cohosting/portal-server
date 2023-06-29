@@ -18,6 +18,9 @@ const {
 const handleSubscriptionCreate = require("./controller/subscription/handleSubscriptionCreate");
 const handleSubscriptionUpdate = require("./controller/subscription/handleSubscriptionUpdate");
 const webhookHandler = require("./webhook/webhookHandler");
+const { handleCancelDowngrade } = require('./controller/subscription/handleCancelDowngrade');
+const { handleCancelSubscription } = require('./controller/subscription/handleCancelSubscription');
+const { handleReactivateSubscription } = require('./controller/subscription/handleReactivateSubscription');
 
 const app = express();
 app.use(cors());
@@ -26,6 +29,8 @@ let additionalMemberPriceId = "price_1NH7fNG6ekPTMWCwi4CIbCh5";
 
 app.use("/webhook", webhookHandler);
 app.use(bodyParser.json());
+app.use(cors());
+
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
   try {
@@ -48,7 +53,9 @@ app.post("/create-customer", async (req, res) => {
 app.post("/create-subscription", handleSubscriptionCreate);
 
 app.post("/update-subscription", handleSubscriptionUpdate);
-
+app.post('/cancel-downgrade', handleCancelDowngrade)
+app.post("/cancel-subscription", handleCancelSubscription)
+app.post("/reactivate-subscription", handleReactivateSubscription)
 app.get("/create-billing-portal-session/:customerId", async (req, res) => {
   const customerId = req.params.customerId;
   console.log({ customerId });
