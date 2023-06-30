@@ -9,8 +9,7 @@ const updateInvoiceStatus = require("./Handlers/updateInvoiceStatus");
 const updateDefaultPaymentMethod = require("./Handlers/updateDefaultPaymentMethod");
 const updateSeatQuantity = require("./Handlers/updateSeatQuantity");
 const handleUpdate = require("./Handlers/subscriptionUpdates/handleUpdate");
-const endpointSecret =
-  "whsec_4ff760b719b6882a9ee21ee8077eb2abd4facc836f96a09c119f5c72ff7123ed";
+const endpointSecret = "whsec_XPzH5f0bVO8fJSrSKuQkQgvus6WQoP16";
 
 webhookHandler.post(
   "/",
