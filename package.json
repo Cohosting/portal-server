@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "pm2 start index.js --watch",
-    "start:dev": "nodemon index.js"
+    "start": "node index.js",
+    "start:dev": "pm2 start index.js --watch"
   },
   "author": "Himel",
   "license": "ISC",
