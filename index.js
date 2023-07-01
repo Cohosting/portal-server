@@ -18,6 +18,7 @@ const {
 const handleSubscriptionCreate = require("./controller/subscription/handleSubscriptionCreate");
 const handleSubscriptionUpdate = require("./controller/subscription/handleSubscriptionUpdate");
 const webhookHandler = require("./webhook/webhookHandler");
+const connectWebhookHandler = require("./webhook/connectWebhookHandler")
 const { handleCancelDowngrade } = require('./controller/subscription/handleCancelDowngrade');
 const { handleCancelSubscription } = require('./controller/subscription/handleCancelSubscription');
 const { handleReactivateSubscription } = require('./controller/subscription/handleReactivateSubscription');
@@ -28,6 +29,7 @@ let removeBrandingPriceId = "price_1N53z2G6ekPTMWCwGfVS7xDn";
 let additionalMemberPriceId = "price_1NH7fNG6ekPTMWCwi4CIbCh5";
 
 app.use("/webhook", webhookHandler);
+app.use("/webhook-connect", connectWebhookHandler);
 app.use(bodyParser.json());
 app.use(cors());
 

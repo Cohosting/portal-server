@@ -2,10 +2,8 @@ const express = require("express");
 const webhookHandler = express.Router();
 const { constructEvent } = require("./../services/stripeService");
 const { errorHandler } = require("../utils");
-const invoiceFinalizedHandler = require("./Handlers/invoiceFinalizedHandler");
 const futureSubscriptionHandling = require("./Handlers/futureSubscriptionHandling");
 const failedPaymentHandle = require("./Handlers/failedPaymentHandle");
-const updateInvoiceStatus = require("./Handlers/updateInvoiceStatus");
 const updateDefaultPaymentMethod = require("./Handlers/updateDefaultPaymentMethod");
 const updateSeatQuantity = require("./Handlers/updateSeatQuantity");
 const handleUpdate = require("./Handlers/subscriptionUpdates/handleUpdate");
@@ -34,13 +32,7 @@ webhookHandler.post(
         case "invoice.created":
           updateSeatQuantity(event);
           break;
-        case "invoice.finalized":
-          invoiceFinalizedHandler(event);
-          break;
-        case "invoice.paid":
-          updateInvoiceStatus(event);
 
-          break;
         case "invoice.payment_failed":
           await failedPaymentHandle(event);
 
