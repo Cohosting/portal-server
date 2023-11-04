@@ -141,6 +141,7 @@ const handleCreateConnectInvoice = async (req, res) => {
       stripeInvoiceId: invoice.id,
       status: invoice.status,
       hosted_invoice_url: invoice.hosted_invoice_url,
+      invoice_pdf: invoice.invoice_pdf
     });
     res.json({ invoice });
   } catch (error) {
