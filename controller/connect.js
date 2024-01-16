@@ -68,7 +68,10 @@ const handleGetConnectUser = async (req, res) => {
 };
 
 const mode = process.env.APP_MODE;
-
+let url =
+  mode === "production"
+    ? "https://dashboard.huehq.com"
+    : "http://dashboard.localhost:3000";
 const handleGetConnectSession = async (req, res) => {
   const { stripeConnectAccountId, userId, portalId } = req.body;
 
@@ -83,12 +86,8 @@ const handleGetConnectSession = async (req, res) => {
   try {
     const accountLink = await stripe.accountLinks.create({
       account: id,
-      refresh_url: `dashboard.${
-        mode === "production" ? "huehq.com" : "localhost:3000"
-      }/reauth`, // Replace with your refresh URL
-      return_url: `dashboard.${
-        mode === "production" ? "huehq.com" : "localhost:3000"
-      }/return`, // Replace with your return URL
+      refresh_url: `${url}/reauth`, // Replace with your refresh URL
+      return_url: `${url}/return`, // Replace with your return URL
       type: "account_onboarding",
     });
     res.json({ accountLink });
