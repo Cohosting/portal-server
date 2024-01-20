@@ -106,6 +106,7 @@ const handleCreateConnectInvoice = async (req, res) => {
     invoiceId,
   } = req.body;
 
+
   try {
     const invoiceDraft = await stripe.invoices.create(
       {

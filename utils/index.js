@@ -12,6 +12,7 @@ const createInvoiceItem = async (
 ) => {
   console.log({
     quantity,
+    newAm: amount * 100,
   });
 
   const invoiceItem = await stripe.invoiceItems.create(
@@ -20,7 +21,7 @@ const createInvoiceItem = async (
       customer: customerId,
       description,
       quantity,
-      unit_amount: amount,
+      unit_amount: amount * 100,
     },
     {
       stripeAccount: stripeConnectAccountId,

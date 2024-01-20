@@ -308,6 +308,11 @@ app.post("/createAddOnSubscription", async (req, res) => {
 app.use("/connect", connectRouter);
 
 
+app.use((err, req, res, next) => {
+  console.error(err.stack); // Log error for debugging
+
+  res.status(500).send("Something went wrong!"); // Send a generic error response
+});
 
 
 
