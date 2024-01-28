@@ -22,6 +22,7 @@ const connectWebhookHandler = require("./webhook/connectWebhookHandler")
 const { handleCancelDowngrade } = require('./controller/subscription/handleCancelDowngrade');
 const { handleCancelSubscription } = require('./controller/subscription/handleCancelSubscription');
 const { handleReactivateSubscription } = require('./controller/subscription/handleReactivateSubscription');
+const { clientAuthRouter } = require("./router/client.auth");
 
 const app = express();
 app.use(cors());
@@ -33,6 +34,8 @@ app.use("/webhook-connect", connectWebhookHandler);
 app.use(bodyParser.json());
 app.use(cors());
 
+
+app.use("/client-auth", clientAuthRouter);
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
   try {

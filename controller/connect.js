@@ -104,12 +104,13 @@ const handleCreateConnectInvoice = async (req, res) => {
     payment_settings,
     isFromApp,
     invoiceId,
+    memo,
   } = req.body;
-
 
   try {
     const invoiceDraft = await stripe.invoices.create(
       {
+        description: memo,
         customer: customerId,
         payment_settings,
         metadata: {
@@ -147,7 +148,7 @@ const handleCreateConnectInvoice = async (req, res) => {
       stripeInvoiceId: invoice.id,
       status: invoice.status,
       hosted_invoice_url: invoice.hosted_invoice_url,
-      invoice_pdf: invoice.invoice_pdf
+      invoice_pdf: invoice.invoice_pdf,
     });
     res.json({ invoice });
   } catch (error) {
