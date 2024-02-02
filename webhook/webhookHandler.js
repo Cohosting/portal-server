@@ -7,6 +7,7 @@ const failedPaymentHandle = require("./Handlers/failedPaymentHandle");
 const updateDefaultPaymentMethod = require("./Handlers/updateDefaultPaymentMethod");
 const updateSeatQuantity = require("./Handlers/updateSeatQuantity");
 const handleUpdate = require("./Handlers/subscriptionUpdates/handleUpdate");
+const handleSetupIntent = require("./Handlers/handleSetupIntent");
 const endpointSecret = "whsec_4hNE0BOHmoE76Rnl85BXJoLAGcvp2QnW";
 
 webhookHandler.post(
@@ -46,6 +47,9 @@ webhookHandler.post(
 
         case "customer.subscription.updated":
           handleUpdate(event);
+          break;
+        case "checkout.session.completed":
+          handleSetupIntent(event.data.object);
           break;
       }
     } catch (error) {

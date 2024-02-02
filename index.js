@@ -6,23 +6,23 @@ const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const connectRouter = require("./router/connect");
-const { getSubscriptionInfo } = require("./stripe");
-const { findUserByEmail, db, admin } = require("./firebase");
-const { formateLineItems } = require("./utils");
-const {
-  findUserByCustomerId,
-  findPortalByURL,
-  importInvoiceToDatabase,
-  getNextMonthFirstDayTimestamp,
-} = require("./utils/index");
+const { db } = require("./firebase");
+const { getNextMonthFirstDayTimestamp } = require("./utils/index");
 const handleSubscriptionCreate = require("./controller/subscription/handleSubscriptionCreate");
 const handleSubscriptionUpdate = require("./controller/subscription/handleSubscriptionUpdate");
 const webhookHandler = require("./webhook/webhookHandler");
-const connectWebhookHandler = require("./webhook/connectWebhookHandler")
-const { handleCancelDowngrade } = require('./controller/subscription/handleCancelDowngrade');
-const { handleCancelSubscription } = require('./controller/subscription/handleCancelSubscription');
-const { handleReactivateSubscription } = require('./controller/subscription/handleReactivateSubscription');
+const connectWebhookHandler = require("./webhook/connectWebhookHandler");
+const {
+  handleCancelDowngrade,
+} = require("./controller/subscription/handleCancelDowngrade");
+const {
+  handleCancelSubscription,
+} = require("./controller/subscription/handleCancelSubscription");
+const {
+  handleReactivateSubscription,
+} = require("./controller/subscription/handleReactivateSubscription");
 const { clientAuthRouter } = require("./router/client.auth");
+const customerRouter = require("./router/customer");
 
 const app = express();
 app.use(cors());
@@ -34,14 +34,19 @@ app.use("/webhook-connect", connectWebhookHandler);
 app.use(bodyParser.json());
 app.use(cors());
 
-
 app.use("/client-auth", clientAuthRouter);
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
+  const testClock = await stripe.testHelpers.testClocks.create({
+    frozen_time: 1635750000,
+    name: "Annual renewal",
+  });
   try {
     // Create a new customer in Stripe
     const customer = await stripe.customers.create({
       email: req.body.email,
+      test_clock: testClock.id,
+
       metadata: {
         // include portalId and owner UID
         userId: req.body.userId,
@@ -58,9 +63,9 @@ app.post("/create-customer", async (req, res) => {
 app.post("/create-subscription", handleSubscriptionCreate);
 
 app.post("/update-subscription", handleSubscriptionUpdate);
-app.post('/cancel-downgrade', handleCancelDowngrade)
-app.post("/cancel-subscription", handleCancelSubscription)
-app.post("/reactivate-subscription", handleReactivateSubscription)
+app.post("/cancel-downgrade", handleCancelDowngrade);
+app.post("/cancel-subscription", handleCancelSubscription);
+app.post("/reactivate-subscription", handleReactivateSubscription);
 app.get("/create-billing-portal-session/:customerId", async (req, res) => {
   const customerId = req.params.customerId;
   console.log({ customerId });
@@ -307,9 +312,8 @@ app.post("/createAddOnSubscription", async (req, res) => {
   }
 });
 
-
 app.use("/connect", connectRouter);
-
+app.use("/customers", customerRouter);
 
 app.use((err, req, res, next) => {
   console.error(err.stack); // Log error for debugging
