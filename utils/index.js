@@ -118,6 +118,9 @@ function getNextMonthFirstDayTimestamp(currentDate = new Date()) {
     nextNaturalBillingDate.getTime()
   );
 
+
+  console.log({ timestamps: timestamp / 1000 });
+
   return Math.floor(timestamp / 1000); // Convert to Unix timestamp
 }
 const getPortalData = async (portalId) => {
