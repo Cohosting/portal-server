@@ -37,16 +37,12 @@ app.use(cors());
 app.use("/client-auth", clientAuthRouter);
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
-  /*   const testClock = await stripe.testHelpers.testClocks.create({
-    frozen_time: 1667286000,
-    name: "Annual renewal",
-  }); */
+ 
   try {
     // Create a new customer in Stripe
     const customer = await stripe.customers.create({
       email: req.body.email,
-      /*       test_clock: testClock.id,
-       */
+
       metadata: {
         // include portalId and owner UID
         userId: req.body.userId,
