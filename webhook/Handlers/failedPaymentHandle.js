@@ -34,6 +34,8 @@ const failedPaymentHandle = async (event) => {
           userId: paymentFailedEvent.customer,
           ...error,
         },
+        /*         "subscriptions.current.subscriptionStatus": "active"
+         */
       })
       .catch((error) => {
         console.error("Error writing document: ", error);

@@ -90,29 +90,35 @@ const importInvoiceToDatabase = async (invoice, customer) => {
   });
   return invoiceRef;
 };
-function getNextMonthFirstDayTimestamp() {
-  const currentDate = new Date();
+function getNextMonthFirstDayTimestamp(currentDate = new Date()) {
+  /**
+   * Calculates the timestamp of the first day of the next month,
+   * ensuring it doesn't exceed the next natural billing date.
+   *
+   * @param {Date} currentDate - The current date (optional, defaults to current UTC time).
+   * @returns {number} The timestamp of the first day of the next month, clamped if necessary.
+   */
+
   const currentMonth = currentDate.getUTCMonth();
+  const currentYear = currentDate.getUTCFullYear();
 
-  let nextMonth;
-  let nextYear;
+  // Calculate next month and year
+  const nextMonth = (currentMonth + 1) % 12;
+  const nextYear = currentYear + (nextMonth === 0);
 
-  if (currentMonth === 11) {
-    nextYear = currentDate.getUTCFullYear() + 1;
-    nextMonth = 0; // January (month index 0) of the next year
-  } else {
-    nextYear = currentDate.getUTCFullYear();
-    nextMonth = currentMonth + 1;
-  }
-
+  // Get the first day of the next month
   const firstDayOfNextMonth = new Date(Date.UTC(nextYear, nextMonth, 1));
-  const offsetMinutes = firstDayOfNextMonth.getTimezoneOffset();
-  firstDayOfNextMonth.setUTCMinutes(
-    firstDayOfNextMonth.getUTCMinutes() - offsetMinutes
+
+  // Calculate the next natural billing date (1st of next month)
+  const nextNaturalBillingDate = new Date(Date.UTC(nextYear, nextMonth, 1));
+
+  // Ensure the calculated timestamp doesn't exceed the next natural billing date
+  const timestamp = Math.min(
+    firstDayOfNextMonth.getTime(),
+    nextNaturalBillingDate.getTime()
   );
 
-  const unixTimestamp = Math.floor(firstDayOfNextMonth.getTime() / 1000);
-  return unixTimestamp;
+  return Math.floor(timestamp / 1000); // Convert to Unix timestamp
 }
 const getPortalData = async (portalId) => {
   try {

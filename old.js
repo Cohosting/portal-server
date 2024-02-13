@@ -1,5 +1,7 @@
+const { getNextMonthFirstDayTimestamp } = require("./utils");
+
 app.post(
-  "/webhook",
+  "k",
   express.raw({ type: "application/json" }),
   async (request, response) => {
     const sig = request.headers["stripe-signature"];

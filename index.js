@@ -38,7 +38,7 @@ app.use("/client-auth", clientAuthRouter);
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
   const testClock = await stripe.testHelpers.testClocks.create({
-    frozen_time: 1635750000,
+    frozen_time: 1667286000,
     name: "Annual renewal",
   });
   try {
@@ -136,6 +136,33 @@ app.post("/payment-method", async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to retrieve customer or payment method" });
+  }
+});
+app.get("/subscriptions/:subscriptionId", async (req, res) => {
+  try {
+    const subscriptionId = req.params.subscriptionId;
+
+    // Retrieve the subscription data
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+    // Extract the latest invoice ID
+    const latestInvoiceId = subscription.latest_invoice;
+
+    // Optionally validate the invoice ID (if necessary)
+    // if (!latestInvoiceId) {
+    //   throw new Error('Subscription does not have a latest invoice');
+    // }
+
+    // Retrieve the latest invoice data
+    const invoice = await stripe.invoices.retrieve(latestInvoiceId);
+
+    // Combine subscription and invoice data (optional)
+    const combinedData = { ...subscription, invoice };
+
+    res.json(combinedData);
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ error: error.message });
   }
 });
 

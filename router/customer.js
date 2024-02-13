@@ -2,7 +2,11 @@ const express = require("express");
 const { stripe } = require("../services/stripeService");
 
 const customerRouter = express.Router();
-
+const mode = process.env.APP_MODE;
+let url =
+  mode === "production"
+    ? "https://dashboard.huehq.com"
+    : "http://dashboard.localhost:3000";
 customerRouter.get("/:customerId/payment-methods", async (req, res) => {
   const customerId = req.params.customerId;
 
@@ -12,10 +16,10 @@ customerRouter.get("/:customerId/payment-methods", async (req, res) => {
     });
 
     const customer = await stripe.customers.retrieve(customerId);
-    const defaultPaymentMethodId = customer.default_source;
-
+    const defaultPaymentMethodId =
+      customer.invoice_settings.default_payment_method;
+    console.log({ customer });
     const formattedMethods = paymentMethods.data.map((method) => {
-      console.log(method.card);
       return {
         id: method.id,
         type: method.type,
@@ -42,11 +46,30 @@ customerRouter.post("/create-setup-session", async (req, res) => {
     mode: "setup",
     ui_mode: "embedded",
     customer: req.body.customerId,
-    return_url:
-      "https://example.com/checkout/return?session_id={CHECKOUT_SESSION_ID}",
+    redirect_on_completion: "never",
+    /*     return_url: `${url}/return?session_id={CHECKOUT_SESSION_ID}`,
+     */
+    metadata: {
+      for_failed_payment: "true",
+      subscriptionId: req.body.subscriptionId,
+      portalId: req.body.portalId,
+    },
   });
 
   res.send({ clientSecret: session.client_secret });
 });
+customerRouter.post("/create-customer-portal-session", async (req, res) => {
+  const session = await stripe.billingPortal.sessions.create({
+    customer: req.body.customerId,
+    return_url: "https://example.com/account",
+  });
 
+  res.json(session);
+});
 module.exports = customerRouter;
+
+/* 
+cs_test_c1dIOhsEGOWGXQsQWl90d7QqtmRa3vagXabUW0jlhGFO9p4h6yfiIw4IhY
+
+
+*/

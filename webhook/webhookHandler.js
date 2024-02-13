@@ -10,6 +10,9 @@ const handleUpdate = require("./Handlers/subscriptionUpdates/handleUpdate");
 const handleSetupIntent = require("./Handlers/handleSetupIntent");
 const endpointSecret = "whsec_4hNE0BOHmoE76Rnl85BXJoLAGcvp2QnW";
 
+/* main */
+/* "whsec_4hNE0BOHmoE76Rnl85BXJoLAGcvp2QnW";
+ */
 webhookHandler.post(
   "/",
   express.raw({ type: "application/json" }),

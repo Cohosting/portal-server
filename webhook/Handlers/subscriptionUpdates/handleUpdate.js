@@ -23,6 +23,7 @@ const handleUpdate = async (event) => {
   const portalId = updatedSubscription.metadata.portalId;
   const subscriptionType = updatedSubscription.metadata.type;
 
+  console.log({ statusOfSubs: updatedSubscription.status });
   if (!portalId) {
     console.log("Portal ID is missing");
     return;
@@ -54,13 +55,13 @@ const handleUpdate = async (event) => {
       console.log({
         subscriptionUpdated: updatedSubscription,
         cancel_at_period_end: updatedSubscription.cancel_at_period_end,
-      })
+      });
 
       // Process the subscription update based on its status
       if (updatedSubscription.cancel_at_period_end) {
         await handleSubscriptionEnd(updatedSubscription, portalId);
-      } else if (updatedSubscription.status === "active") {
-        console.log('active sub getting updated')
+      } else {
+        console.log("active sub getting updated");
         await handleActiveSubscription(updatedSubscription, portalId);
       }
     }
