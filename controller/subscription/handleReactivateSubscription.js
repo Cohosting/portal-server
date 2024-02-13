@@ -38,7 +38,7 @@ const handleReactivateSubscription = async (req, res) => {
     return res.status(500).json({ error: "Internal Server Error" });
   }
 
-  try {
+  /*   try {
     console.log("Updating add-on subscription:", addOnSubscriptionId);
     await stripe.subscriptions.update(addOnSubscriptionId, {
       teamItemShouldRemoved: "true",
@@ -47,7 +47,7 @@ const handleReactivateSubscription = async (req, res) => {
     console.error("Error updating add-on subscription:", error);
     return res.status(500).json({ error: "Internal Server Error" });
   }
-
+ */
   console.log("Subscription reactivated successfully");
   return res
     .status(200)
