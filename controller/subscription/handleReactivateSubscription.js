@@ -2,12 +2,13 @@ const { db } = require("../../firebase");
 const { stripe } = require("../../services/stripeService");
 
 const handleReactivateSubscription = async (req, res) => {
+
     console.log('getting invoked')
     const { subscriptionId, portalId, addOnSubscriptionId } = req.body;
 
     if (!subscriptionId || !portalId || !addOnSubscriptionId) {
-        return res.status(400).json({ error: "Missing required fields" });
-    };
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
     try {
         const ref = await db.doc(`portals/${portalId}`).get();
