@@ -3,7 +3,7 @@ const {
   handleCreateConnectAccount,
   handleCreateConnectedCustomer,
   handleGetConnectUser,
-  handleGetConnectSession,
+  handleCreateOrRetrieveConnectSession,
   handleCreateConnectInvoice,
   handleCreateConnectCheckout,
   handleManageBillingInfo,
@@ -15,7 +15,10 @@ connectRouter.get("/create-connect-account", handleCreateConnectAccount);
 connectRouter.post("/create-connected-customer", handleCreateConnectedCustomer);
 
 connectRouter.get("/get-connect-user", handleGetConnectUser);
-connectRouter.post("/create-connect-session", handleGetConnectSession);
+connectRouter.post(
+  "/create-connect-session",
+  handleCreateOrRetrieveConnectSession
+);
 connectRouter.post("/create-connect-invoice", handleCreateConnectInvoice);
 connectRouter.post("/create-connect-checkout", handleCreateConnectCheckout);
 connectRouter.post("/create-connect-billing-session", handleManageBillingInfo);

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chart Example</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+
+
+    <style>
+        body {
+            background-color: black !important;
+            color: white;
+            font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+        }
+
+        .heading {
+            font-size: 60px;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .underline {
+            width: 200px;
+            height: 3px;
+            background-color: white;
+        }
+
+        .revenue {
+            color: #d3ff4c;
+            text-transform: uppercase;
+            line-height: 0.5;
+            padding-top: 15px;
+            font-size: 25px;
+        }
+
+        .chart {
+            background-color: white;
+        }
+
+        .projections {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .projections__items>p {
+            text-transform: uppercase;
+            color: #d3ff4c;
+            font-weight: bold;
+        }
+
+        .location {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #d3ff4c;
+            color: black;
+            text-transform: uppercase;
+        }
+
+        ;
+
+        a.result_link {
+            text-decoration: none;
+            color: white !important;
+            font-weight: bold;
+            font-size: 25px;
+
+            margin-top: 15px;
+        }
+
+        #result_link_id {
+            text-decoration: underline;
+            color: white !important;
+            font-weight: bold;
+            font-size: 25px;
+
+            margin-top: 15px;
+        }
+
+        ;
+
+
+        #qrcode {
+
+            margin: 20px 0;
+        }
+
+        .qrcode {
+            margin: 20px 0;
+
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1 class="heading">Industry-Leading Performance Report</h1>
+        <div class="underline">&nbsp;</div>
+    </header>
+    <main>
+        <section class="revenue">
+            <h2>EST. ANNUAL REVENUE</h2>
+            <p>$101,253 - $131,516</p>
+        </section>
+        <section class="chart">
+            <canvas width="400" height="200" id="myChart"></canvas>
+
+        </section>
+        <section class="projections">
+            <h2>Industry-Leading <br /> Projections</h2>
+            <div class="projections__items">
+                <p>Avg. Nightly</p>
+                <p>$267 - $425</p>
+            </div>
+            <div class="projections__items">
+                <p>Occupancy</p>
+                <p> 81% - 87%</p>
+            </div>
+        </section>
+
+
+        <section class="location">
+            <p>
+                306 E 500N, Hurricane, UT 84737
+            </p>
+        </section>
+        <!--         <section class="amenities">
+            <h2>Themed Resort Amenities</h2>
+            <ul>
+                <li>Volcano Splashpad</li>
+                <li>Mini-Golf</li>
+                <li>Pool Oasis</li>
+                <li>Pickleball Court</li>
+                <li>Gym</li>
+                <li>Waterslide</li>
+                <li>Hot Tub</li>
+                <li>Firepit</li>
+                <li>BBQs</li>
+            </ul>
+        </section>
+        <section class="details">
+            <h2>Property Details</h2>
+            <p>306 E 500 N, Hurricane, UT 84737</p>
+            <p>2024 Build, 2,319 sq. ft., 4 Bedroom, 4.5 Baths</p>
+            <p>26 Guests Per Unit</p>
+            <p>Nightly Zoning</p>
+            <p>Private Hot Tub</p>
+            <p>Free EV Charging</p>
+            <p>RV & Boat Parking</p>
+        </section> -->
+        <a class="result_link" id="result_link_id" href="http://www.google.com">Goto Report</a>
+
+        <section style="margin-top: 10px; margin-bottom: 10px;  ">
+            <div id="qrcode"></div>
+        </section>
+
+
+
+    </main>
+
+    <footer>
+        <p>&copy; 2024 Your Company Name</p>
+    </footer>
+
+
+    <script>
+
+
+
+
+    </script>
+</body>
+
+</html>

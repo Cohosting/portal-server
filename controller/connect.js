@@ -72,27 +72,44 @@ let url =
   mode === "production"
     ? "https://dashboard.huehq.com"
     : "http://dashboard.localhost:3000";
-const handleGetConnectSession = async (req, res) => {
+
+// Handles creating or retrieving a Stripe Connect account session
+const handleCreateOrRetrieveConnectSession = async (req, res) => {
   const { stripeConnectAccountId, userId, portalId } = req.body;
 
-  let id;
+  let accountId;
 
+  // Check if Stripe Connect Account ID is provided
   if (!stripeConnectAccountId) {
-    const account = await createConnectAccount(userId, portalId);
-    id = account.id;
+    console.log(
+      `Creating new Stripe Connect account for User ID: ${userId}, Portal ID: ${portalId}`
+    );
+    try {
+      const newAccount = await createConnectAccount(userId, portalId);
+      accountId = newAccount.id;
+    } catch (error) {
+      console.error("Error creating Stripe Connect account:", error);
+      return res
+        .status(500)
+        .json({ error: "Failed to create Stripe Connect account" });
+    }
   } else {
-    id = stripeConnectAccountId;
+    accountId = stripeConnectAccountId;
   }
+  console.log(`Stripe Connect Account ID: ${accountId}`);
+
   try {
+    // Create account link for onboarding or dashboard access
     const accountLink = await stripe.accountLinks.create({
-      account: id,
-      refresh_url: `${url}/reauth`, // Replace with your refresh URL
-      return_url: `${url}/return`, // Replace with your return URL
+      account: accountId,
+      refresh_url: `${process.env.REFRESH_URL}/reauth`, // Use environment variable for refresh URL
+      return_url: `${process.env.RETURN_URL}/return`, // Use environment variable for return URL
       type: "account_onboarding",
     });
     res.json({ accountLink });
   } catch (error) {
     console.error("Error creating account link:", error);
+    res.status(500).json({ error: "Failed to create account link" });
   }
 };
 
@@ -203,7 +220,7 @@ module.exports = {
   handleCreateConnectAccount,
   handleCreateConnectedCustomer,
   handleGetConnectUser,
-  handleGetConnectSession,
+  handleCreateOrRetrieveConnectSession,
   handleCreateConnectInvoice,
   handleCreateConnectCheckout,
   handleManageBillingInfo,

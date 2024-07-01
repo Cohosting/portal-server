@@ -23,6 +23,7 @@ const {
 } = require("./controller/subscription/handleReactivateSubscription");
 const { clientAuthRouter } = require("./router/client.auth");
 const customerRouter = require("./router/customer");
+const handlePuppteer = require("./router/Puppeteer");
 
 const app = express();
 app.use(cors());
@@ -37,7 +38,6 @@ app.use(cors());
 app.use("/client-auth", clientAuthRouter);
 // Create a route for customer creation
 app.post("/create-customer", async (req, res) => {
- 
   try {
     // Create a new customer in Stripe
     const customer = await stripe.customers.create({
@@ -337,6 +337,7 @@ app.post("/createAddOnSubscription", async (req, res) => {
 
 app.use("/connect", connectRouter);
 app.use("/customers", customerRouter);
+app.post("/puppeteer", handlePuppteer);
 
 app.use((err, req, res, next) => {
   console.error(err.stack); // Log error for debugging
